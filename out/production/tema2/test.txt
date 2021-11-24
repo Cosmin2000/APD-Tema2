@@ -1,0 +1,5 @@
+10
+3
+skel/in1.txt
+skel/in2.txt
+skel/in3.txt
