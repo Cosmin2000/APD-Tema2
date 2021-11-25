@@ -1,9 +1,9 @@
-import javax.print.Doc;
+
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+
 
 import static java.lang.Integer.parseInt;
 
@@ -15,7 +15,7 @@ public class Tema2 {
         }
         AtomicInteger inQueue = new AtomicInteger(0);
         ExecutorService tpe = Executors.newFixedThreadPool(parseInt(args[0]));
-        Map<String , List<Future<List<Object>>>> results = new HashMap<>();
+        Map<String , List<Future<Pair<Map<Integer, Long>,List<String>>>>> results = new HashMap<>();
         //List<Future<List<Object>>> res = new ArrayList<>();
 
 
@@ -38,9 +38,8 @@ public class Tema2 {
             // pentru fiecare fisier calculez offset-ul, dimensiunea si pornesc thread-urile map
             for (String file : files) {
 
-                List<Future<List<Object>>> res = new ArrayList<>();
+                List<Future<Pair<Map<Integer, Long>,List<String>>>> res = new ArrayList<>();
                 File f = new File(file);
-                int size = (int)f.length();
                 int offset = 0;
                 int dim = 0;
                 while (offset + dim <= f.length()) {
@@ -49,31 +48,38 @@ public class Tema2 {
                         dim = (int)f.length() - offset;
                         inQueue.incrementAndGet();
                         res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
+                        //res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
                         break;
                     } else {
                         dim = dim_frag;
                     }
                     inQueue.incrementAndGet();
+                    //res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
+
                    res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
 
                 }
                 results.put(file,res);
             }
             tpe.awaitTermination(10, TimeUnit.SECONDS);
+//            for (Future<List<Object>> lis : res) {
+//                System.out.println(lis.get());
+//            }
 
+            // PARTEA DE REDUCE
             tpe = Executors.newFixedThreadPool(Integer.parseInt(args[0]));
 
             List<Future<Map<String, List<Object>>>> reduceResultFuture = new ArrayList<>();
-            List<Map<String, List<Object>>> reduceResult = new ArrayList<>();
 
 
-            for (Map.Entry<String,List<Future<List<Object>>>> set : results.entrySet()) {
+
+            for (Map.Entry<String,List<Future<Pair<Map<Integer, Long>,List<String>>>>> set : results.entrySet()) {
 
                 // dictionares este o lista de rezultate (lista) de la MAP
                 inQueue.incrementAndGet();
-                List<List<Object>> dictionares = new ArrayList<>();
-                for (Future<List<Object>> t : set.getValue()) {
-                    List<Object> objects = t.get();
+                List<Pair<Map<Integer, Long>,List<String>>> dictionares = new ArrayList<>();
+                for (Future<Pair<Map<Integer, Long>,List<String>>> t : set.getValue()) {
+                    Pair<Map<Integer, Long>,List<String>> objects = t.get();
                     dictionares.add(objects);
                 }
                 reduceResultFuture.add(tpe.submit(new Reduce(set.getKey(), dictionares,tpe,inQueue)));
@@ -92,6 +98,7 @@ public class Tema2 {
             List<Document>  documents = new ArrayList<>(docs.values());
             Collections.sort(documents);
 
+            //documents.forEach(System.out::println);
             BufferedWriter writer = new BufferedWriter(new FileWriter(args[2]));
             for (Document doc : documents) {
                 writer.write(doc + "\n");

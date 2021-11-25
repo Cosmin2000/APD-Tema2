@@ -3,17 +3,17 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import static java.util.stream.Collectors.summingLong;
 
 import static java.util.stream.Collectors.summingInt;
 
 public class Reduce implements Callable<Map<String, List<Object>>>  {
 	String filename;
-	List<List<Object>> mapResult;
+	List<Pair<Map<Integer, Long>,List<String>>> mapResult;
 	ExecutorService executor;
 	AtomicInteger inQueue;
 
-	public Reduce(String filename, List<List<Object>>mapResult, ExecutorService executor, AtomicInteger inQueue) {
+	public Reduce(String filename, List<Pair<Map<Integer, Long>,List<String>>> mapResult, ExecutorService executor, AtomicInteger inQueue) {
 		this.filename = filename;
 		this.mapResult = mapResult;
 		this.executor = executor;
@@ -24,19 +24,22 @@ public class Reduce implements Callable<Map<String, List<Object>>>  {
 	@Override
 	public Map<String, List<Object>> call() {
 		//ETAPA DE COMBINARE
-
+		//(Map<Integer,Integer>)t.get(0)
 		//mapResult.forEach(t -> System.out.println(t));
-		List<Map<Integer,Integer>> maps =  mapResult.stream()
-				.map(t -> (Map<Integer,Integer>)t.get(0))
+
+		List<Map<Integer,Long>> maps =  mapResult.stream()
+				.map(Pair::getA)
 				.collect(Collectors.toList());
-		Map<Integer, Integer> documentMap = maps.stream()
+
+		Map<Integer, Long> documentMap = maps.stream()
 						.flatMap(m -> m.entrySet().stream())
-						.collect( Collectors.groupingBy(Map.Entry::getKey, summingInt(Map.Entry::getValue)));
+						.collect( Collectors.groupingBy(Map.Entry::getKey, summingLong(Map.Entry::getValue)));
 		//System.out.println(documentMap);
 
 		int max = Collections.max(documentMap.keySet());
+
 		List<String> words =  mapResult.stream()
-				.map(t-> (List<String>)t.get(1))
+				.map(Pair::getB)
 				.flatMap(Collection::stream)
 				.filter(s -> s.length() == max)
 				.collect(Collectors.toList());
@@ -52,7 +55,7 @@ public class Reduce implements Callable<Map<String, List<Object>>>  {
 		//System.out.println(numitor);
 
 		long nr_cuv = documentMap.values().stream()
-				.reduce(0, Integer::sum);
+				.reduce(0L, Long::sum);
 		float rang = (float)numitor/nr_cuv;
 		//System.out.println(filename+ ", " +String.format("%.2f", rang) + ", " + max + ", " + words.size());
 
