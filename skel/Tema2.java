@@ -1,3 +1,4 @@
+import javax.print.Doc;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -95,9 +96,14 @@ public class Tema2 {
             }
             List<Document>  documents = new ArrayList<>(docs.values());
             Collections.sort(documents);
-            documents.forEach(System.out::println);
 
+            //documents.forEach(System.out::println);
+            BufferedWriter writer = new BufferedWriter(new FileWriter(args[2]));
+            for (Document doc : documents) {
+                writer.write(doc + "\n");
+            }
 
+            writer.close();
         } catch (IOException | InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
