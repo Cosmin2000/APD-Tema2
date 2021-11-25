@@ -1,3 +1,5 @@
+import java.util.StringTokenizer;
+
 public class Document implements Comparable<Document>{
 	String name;
 	int order;
@@ -74,6 +76,11 @@ public class Document implements Comparable<Document>{
 
 	@Override
 	public String toString() {
-		return name +","+ String.format("%.2f",rang) +"," + max +"," + nr_words;
+		StringTokenizer tokenizer = new StringTokenizer(name,"/");
+		String token = null;
+		while (tokenizer.hasMoreTokens()) {
+			token = tokenizer.nextToken();
+		}
+ 		return token +","+ String.format("%.2f",rang) +"," + max +"," + nr_words;
 	}
 }

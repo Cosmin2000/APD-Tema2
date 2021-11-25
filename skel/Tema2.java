@@ -49,23 +49,18 @@ public class Tema2 {
                         dim = (int)f.length() - offset;
                         inQueue.incrementAndGet();
                         res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
-                        //res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
                         break;
                     } else {
                         dim = dim_frag;
                     }
                     inQueue.incrementAndGet();
-                    //res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
-
                    res.add(tpe.submit(new Worker(file,offset,dim,inQueue,tpe)));
 
                 }
                 results.put(file,res);
             }
             tpe.awaitTermination(10, TimeUnit.SECONDS);
-//            for (Future<List<Object>> lis : res) {
-//                System.out.println(lis.get());
-//            }
+
             tpe = Executors.newFixedThreadPool(Integer.parseInt(args[0]));
 
             List<Future<Map<String, List<Object>>>> reduceResultFuture = new ArrayList<>();
@@ -97,7 +92,6 @@ public class Tema2 {
             List<Document>  documents = new ArrayList<>(docs.values());
             Collections.sort(documents);
 
-            //documents.forEach(System.out::println);
             BufferedWriter writer = new BufferedWriter(new FileWriter(args[2]));
             for (Document doc : documents) {
                 writer.write(doc + "\n");

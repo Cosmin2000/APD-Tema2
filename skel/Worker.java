@@ -4,13 +4,9 @@ import java.io.FileReader;
 import java.io.RandomAccessFile;
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-import static java.lang.Integer.max;
-import static java.lang.Integer.parseInt;
 
 public class Worker implements Callable<List<Object>> {
 	String filename;
@@ -37,7 +33,7 @@ public class Worker implements Callable<List<Object>> {
 	@Override
 	public List<Object> call() throws Exception {
 		// OPERATIA MAP
-		String delims = ";:/?˜\\.,><‘[]{}()!@#$%ˆ&- +’=*”|\t\r\n ";
+		String delims = ";:/?˜\\.,><'[]{}()!@#$%ˆ&- +’=*”|\t\r\n ";
 		File file = new File(filename);
 		//instantiating the RandomAccessFile
 		RandomAccessFile raFile = new RandomAccessFile(file, "r");
@@ -76,12 +72,10 @@ public class Worker implements Callable<List<Object>> {
 			}
 		}
 
-
-		//System.out.println(line + " " +  skipFirstWord);
 		ArrayList<String> words = new ArrayList<>();
 		String str = line.stream().map(Object::toString)
 				.collect(Collectors.joining(""));
-		//System.out.println(str);
+
 		StringTokenizer st = new StringTokenizer(str,delims);
 		if (st.hasMoreTokens() && skipFirstWord) {
 			st.nextToken();
@@ -90,13 +84,12 @@ public class Worker implements Callable<List<Object>> {
 			words.add(st.nextToken());
 
 		}
-		//System.out.println(words);
+	
 		// Dictionarul cerut
 		Map<Integer, Long> dictionar = words.stream()
 				.map(String::length)
 				.collect(Collectors.groupingBy(t -> t, Collectors.counting()));
 
-		//System.out.println(dictionar);
 		Set<Integer> keys =  (dictionar.keySet());
 		int max = 0;
 		for (Integer key : keys) {
@@ -104,14 +97,11 @@ public class Worker implements Callable<List<Object>> {
 				max = key;
 			}
 		}
-		//System.out.println(max);
-		//Integer b =Collections.max(keys);
-		//System.out.println(b);
+		
 		int maxKey = max;
 		List<String> maxWords = words.stream()
 				.filter(t -> t.length() == maxKey)
 				.collect(Collectors.toList());
-		//System.out.println(maxWords);
 
 		int left = inQueue.decrementAndGet();
 		if (left == 0) {
@@ -121,6 +111,8 @@ public class Worker implements Callable<List<Object>> {
 		List<Object> returnMap = new ArrayList<>();
 		returnMap.add(dictionar);
 		returnMap.add(maxWords);
+
+		raFile.close();
 		return returnMap;
 
 	}
