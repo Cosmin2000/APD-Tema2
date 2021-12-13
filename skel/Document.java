@@ -81,6 +81,6 @@ public class Document implements Comparable<Document>{
 		while (tokenizer.hasMoreTokens()) {
 			token = tokenizer.nextToken();
 		}
- 		return token +","+ String.format("%.2f",rang) +"," + max +"," + nr_words;
+		return token +","+ String.format("%.2f",rang) +"," + max +"," + nr_words;
 	}
 }

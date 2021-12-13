@@ -1,5 +1,107 @@
-ASDASDASDASdjasdhkashdjashdsdasjdjkasjkdjashkdasjdhasdasd
-asd
-asd
-as
-dasdasdkhashkdhashjdhagsjkdjgasgjdhkasudkjashkdashjkdaskhdhkashkdhashkd
+Grigore Cosmin-Mitica
+332CC
+
+                                ALGORITMI PARALELI SI DISTRIBUITI
+                                            Tema 2
+                        Procesarea de documente folosind paradigma Map-Reduce
+
+Implementare:
+
+Coordonator: 
+    Pentru implementarea temei am folosit modelul Replicated Workers din laborator.(Am folosit ExecutorService)
+    Prima data am initializat ExecutorService cu numar fix de workeri(= nr de thread-uri).
+    Am folosit un contor atomic ("inQueue") prin care ultimul worker inchide executorul.
+    Pentru citirea fisierului de intrare am folosit BufferReader.
+    Am folost un map "mapResult" care are drept cheie numele fisierlui, iar ca valoare, o lista de
+rezultate de task-uri Map(pentru fiecare fragment din fisier).
+    Am citit apoi fisierul de intrare, prin care am retinut dimensiunea unui fragment, numarul de fisiere
+si apoi pe fiecare fisier citit, l-am adaugat in lista de fisiere(String) si in lista de Documente(clasa Document)
+in care am completat ordinea din fisierul de intrare.
+    Am iterat apoi prin lista de fisiere, iar pentru fiecare fisier am calculat offset-ul si dimensiunea
+fiecarui fragment si am adaugat task-uri in lista de task-uri Map.
+    Pentru ultimul fragment dimensiunea e diferita de a celorlalte, asa ca am calculat-o ca diferenta dintre
+numarul de octeti din fisier - ultimul offset.
+    Dupa ce am creat toate task-uri de tip Map, iterez prin lista de task-uri si pornesc workeri de tip Map
+, iau rezultatul si il adaug in lista de rezultate Map.
+
+MapWorker:
+    Workeri de tip Map i-am implementat folosind Callable pentru a putea returna rezultatele. Rezultatele sunt
+reprezentate de un triplet(am implementat si clasa generica Triplet) care contine dictionarul cu lungimile si aparitiile
+cuvintelor, lista de cuvinte de lungime maxima si numele fisierului conform specificatiilor.
+    Citirea fisierelor in task-ul de tip Map am facut-o folosind RandomAccesFile pentru a putea folosi
+functia "seek()" care seteaza cursorul in fisier.
+    Fragmentul l-am reprezentat ca o lista de caractere.
+    La inceputul unui Task Map verific prima data daca fragmentul incepe in interiorul unui cuvant(doar daca nu
+e primul fragment). Verificarea o fac citind un caracter de la (offset - 1) si unul de la offset, iar daca aceste 2
+caractere nu sunt ambele delimitatoare, primul cuvant din fragment o sa il sar.(Setez un boolean "skipFirstWord" pe true)
+    Citesc apoi fragmentul din fisierul de intrare (doar dimensiunea initiala) si il retin in lista de caractere.
+    Verific apoi daca fragmentul se termina in interiorul unui cuvant citind inca un caracter.(daca se poate , nu se
+poate la ultimul fragment). Daca caracterul citit nu e delimitator, citesc in continuare pana intalnesc delimitator.
+    Creez apoi un String din lista de caractere citita, folosind stream-uri si functionala collect si collector-ul
+"joining".
+    Separ apoi cuvintele cu StringTokenizer, punandu-le intr-o lista "words". Tin cont de flag-ul skipFirstWord pentru
+a stii daca sar peste primul cuvant.
+    Creez apoi dictionarul din specificatii care are drept cheie lungimea cuvantului, iar valoare numarul de cuvinte
+cu acea lungime. Folosesc tot stream-uri. Cu functionala map creez o lista de lungimi, iar cu functionala collect
+si collector-ul "groupingBy" si "counting" pun la cheie lungimea cuvantului, iar la valoare numarul de aparitii.
+    Aflu apoi lungimea maxima a cuvintelor din lista si construiesc lista de cuvinte de lungime maxima.
+Fac asta cu stream-uri. Cu functionala filter, pastrez doar cuvintele de lungime maxima, si cu collector-ul toList()
+le colectez intr-o lista.
+    Verific apoi daca este ultimul worker(inQueue a ajuns la 0) , iar daca este opresc executorul.
+    In final returnez conform specifiatiilor, un triplet care contine dictionarul cu lungimile si numarul de aparitii,
+lista cu cuvintele de lungime maxima si numele fisierului.
+    Rezultatele le obtin de tip Future in coordonator.
+
+Coordonator continuare:
+    Dupa ce am pornit workeri Map, astept sa termine toti folosind functia awaitTermination.
+    Pornesc apoi iarasi executorul, in mod identic ca prima data.
+    Iterez apoi prin dictionarul cu rezulate Map, iar pentru fiecare fisier, pornesc un worker Reduce si adaug
+rezultatele intr-o lisa de rezultate "reduceResultFuture"
+    Astept ca toate rezultate Reduce sa se termine folosind functia awaitTermination.
+    Pentru fiecare rezultat Reduce, completez documentul aferent fisierului, cu rang, lungimea maxima si
+numarul de cuvinte de lungime maxima.
+    Fac apoi din Map-ul de documente, o lista de documente pe care o sortez dupa rang, apoi dupa ordinea
+din fisierul de intrare.
+    Scriu apoi in fisier conform specificatiilor folosind BufferedWriter.
+
+ReduceWorker:
+    Workeri de tip Reduce i-am implementat folosind tot Callable pentru a returna o lista de obiecte care contine
+rang-ul, numele fisierului, lungimea maxima din fisier si numarul de cuvinte de lungime maxima.
+    Returnez in coordonator pentru a putea afisa in ordine sortata.
+    Un worker Reduce primeste numele fisierului, contorul pentru workeri, executorul si o lista de perechi
+de dictionar si lista de cuvinte de la fiecare task Map(de la fiecare fragment).
+    Intr-un worker de tip Reduce, in etapa de combinare creez o lista de dictionare din rezultatul primit de la Task-urile Map. Fac
+asta folosind stream-uri, cu map transform lista de perechi in lista de dictionare, iar cu collect, combin rezultatele
+intr-o lista.
+    Creez apoi un singur dictionar comun pentru tot fisierul folosind tot stream-uri.Cu functionala flatMap fac dintr-o
+lista de dictionare, o lista de intrari de dictionar, iar cu functionala collect si collector-ul groupingBy fac
+un dictionar care are drept cheie, lungimea cuvintelor, iar la valoare, numarul de aparitii din toate dictionarele adunate,
+folosind functia "summingLong".
+    Aflu apoi lungimea maxima din dictionar (folosind "Collections.max") pe care o folosesc pentru a construi lista de cuvinte
+de lungime maxima din tot fisierul.
+    Pentru a construi lista de cuvinte de lungime maxima pentru tot fisierul, folosesc stream-urile.
+Cu map, fac din lista de perechi de la Task-urile Map, o lista de liste de cuvinte, cu functionala flatMap fac din lista de liste,
+o singura lista, cu filter pastrez doar cuvintele care au lungime maxima si apoi le collectez intr-o lista.
+    In etapa de procesare, pentru a obtine numaratorul din formula rang-ului folosesc tot stream-uri. Pe dictionarul fisierului,
+pentru fiecare intrare, inmultesc valoarea din sirul lui fibonacci corespunzatoare cheii(lungimii cuvantului) cu numarul de aparitii,
+si apoi cu functionala "reduce" acumulez totul pornind de la 0 (le fac suma cu functia "sum").
+    Obtin apoi numarul de cuvinte folosind stream-uri, prin functionala "reduce" prin care adun pornind de la 0,
+numarul de aparitii pentru fiecare intrare din dictionar.
+    Calculez apoi rangul impartind numaratorul la numarul de cuvinte.
+    Daca este ultimul Worker, opresc executia executor-ului.
+    In final, returnez rezultatele asa cum am specificat mai sus.
+
+Observatii:
+    Pentru a verifica daca un caracter e delimitator, am facut o functie "isDelimiter" in clasa "MapWorker"
+    De fiecare data cand pornesc un task incrementez contorul inQueue, iar cand se termina il decrementez, asadar
+opresc executorul cand contorul devine 0 (nu mai e nimeni in coada).
+    Folosesc clasa Pair pentru a retine dictionarul si lista de cuvinte de la task-urile Map.
+    Construiesc clasa Document pentru fiecare fisier pentru a putea sorta documentele dupa rang si ordinea din fisierul
+de intrare. Aceasta are ca membrii, rang-ul, numele, ordinea din fisierul de intrare, lungimea maxima a unui cuvant si
+numarul de cuvant.
+    In clasa Fibonacci construiesc in metoda statica fibo(), sirul lui Fibonacci.
+    Folosesc clasa Triplet pentru a putea prelua in coordonator, rezultatele din task-urile Map, adica dictionarul, lista de cuvinte]
+maximale si numele fisierului. Pentru preluarea rezultatelor Map in coordonator folosesc un Map care are o intrare pentru fiecare
+fisier, astfel cheia este reprezentata de numele fisierului, iar ca valoare lista de rezultate pentru acel fisier. In coordonator
+, rezultatele unui Task Map sunt o pereche (clasa Pair) formata din dictionar si lista de cuvinte. Astfel unui task Reduce, nu ii
+trimit o lista de Tripet-uri, ci numele fisierului si o lista de perechi.
